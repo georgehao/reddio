@@ -40,7 +40,9 @@ func (tc *RandomBenchmarkTest) Run(ctx context.Context, m *pkg.WalletManager) er
 		if err := tc.rm.Wait(ctx); err != nil {
 			return err
 		}
-		m.TransferEth(step.From, step.To, step.Count, uint64(i))
+		if err := m.TransferEth(step.From, step.To, step.Count, uint64(i)); err != nil {
+			return err
+		}
 	}
 	return nil
 }

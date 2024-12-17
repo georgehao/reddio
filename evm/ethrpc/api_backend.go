@@ -299,7 +299,7 @@ func (e *EthAPIBackend) Call(ctx context.Context, args TransactionArgs, blockNrO
 		return nil, err
 	}
 
-	if err := args.CallDefaults(globalGasCap, header.BaseFee, e.ChainConfig().ChainID); err != nil {
+	if err = args.CallDefaults(globalGasCap, header.BaseFee, e.ChainConfig().ChainID); err != nil {
 		return nil, err
 	}
 
@@ -389,7 +389,7 @@ func (e *EthAPIBackend) SendTx(ctx context.Context, signedTx *types.Transaction)
 }
 
 func YuTxn2EthTxn(yuSignedTxn *yutypes.SignedTxn) (*types.Transaction, error) {
-	// Un-serialize wrCall.params to retrive datas:
+	// Un-serialize wrCall.params to retrieve datas:
 	wrCallParams := yuSignedTxn.Raw.WrCall.Params
 	txReq := &evm.TxRequest{}
 	err := json.Unmarshal([]byte(wrCallParams), txReq)
@@ -553,12 +553,10 @@ func (e *EthAPIBackend) GetLogs(ctx context.Context, blockHash common.Hash, numb
 		return nil, err
 	}
 
-	result := [][]*types.Log{}
+	var result [][]*types.Log
 	for _, receipt := range receipts {
-		logs := []*types.Log{}
-		for _, vLog := range receipt.Logs {
-			logs = append(logs, vLog)
-		}
+		var logs []*types.Log
+		logs = append(logs, receipt.Logs...)
 		result = append(result, logs)
 	}
 

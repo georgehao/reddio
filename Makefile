@@ -2,6 +2,9 @@ PROJECT=reddio
 
 default: build
 
+lint:
+	GOBIN=$(PWD) go run ./utils/lint.go
+
 build:
 	go build -v -o $(PROJECT) ./cmd/node/main.go ./cmd/node/testrequest.go
 

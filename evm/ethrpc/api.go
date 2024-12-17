@@ -160,7 +160,7 @@ func (s *EthereumAPI) BlobBaseFee(ctx context.Context) *hexutil.Big {
 func (s *EthereumAPI) Syncing() (interface{}, error) {
 	progress := s.b.SyncProgress()
 
-	// Return not syncing if the synchronisation already completed
+	// Return not syncing if the synchronization already completed
 	if progress.Done() {
 		return false, nil
 	}
@@ -288,9 +288,9 @@ func (s *BlockChainAPI) GetProof(ctx context.Context, address common.Address, st
 		var storageTrie state.Trie
 		if storageRoot != types.EmptyRootHash && storageRoot != (common.Hash{}) {
 			id := trie.StorageTrieID(header.Root, crypto.Keccak256Hash(address.Bytes()), storageRoot)
-			st, err := trie.NewStateTrie(id, statedb.Database().TrieDB())
-			if err != nil {
-				return nil, err
+			st, createTrieErr := trie.NewStateTrie(id, statedb.Database().TrieDB())
+			if createTrieErr != nil {
+				return nil, createTrieErr
 			}
 			storageTrie = st
 		}
@@ -311,7 +311,7 @@ func (s *BlockChainAPI) GetProof(ctx context.Context, address common.Address, st
 				continue
 			}
 			var proof proofList
-			if err := storageTrie.Prove(crypto.Keccak256(key.Bytes()), &proof); err != nil {
+			if err = storageTrie.Prove(crypto.Keccak256(key.Bytes()), &proof); err != nil {
 				return nil, err
 			}
 			value := (*hexutil.Big)(statedb.GetState(address, key).Big())
@@ -397,14 +397,14 @@ func (s *BlockChainAPI) GetHeaderByHash(ctx context.Context, hash common.Hash) m
 func (s *BlockChainAPI) GetBlockByNumber(ctx context.Context, number rpc.BlockNumber, fullTx bool) (map[string]interface{}, error) {
 	block, yuBlock, err := s.b.BlockByNumber(ctx, number)
 	if block != nil && err == nil {
-		response, err := s.rpcMarshalBlock(ctx, block, yuBlock, true, fullTx)
-		if err == nil && number == rpc.PendingBlockNumber {
+		response, marshalErr := s.rpcMarshalBlock(ctx, block, yuBlock, true, fullTx)
+		if marshalErr == nil && number == rpc.PendingBlockNumber {
 			// Pending blocks need to nil out a few fields
 			for _, field := range []string{"hash", "nonce", "miner"} {
 				response[field] = nil
 			}
 		}
-		return response, err
+		return response, marshalErr
 	}
 	return nil, err
 }
@@ -646,7 +646,7 @@ func (context *ChainContext) Engine() consensus.Engine {
 func (context *ChainContext) GetHeader(hash common.Hash, number uint64) *types.Header {
 	// This method is called to get the hash for a block number when executing the BLOCKHASH
 	// opcode. Hence no need to search for non-canonical blocks.
-	header, _, err := context.b.HeaderByNumber(context.ctx, rpc.BlockNumber(number))
+	header, _, err := context.b.HeaderByNumber(context.ctx, rpc.BlockNumber(int64(number)))
 	if err != nil || header.Hash() != hash {
 		return nil
 	}
@@ -687,7 +687,7 @@ func DoEstimateGas(ctx context.Context, b Backend, args TransactionArgs, blockNr
 	originGasLimit := args.Gas
 	args.Gas = nil
 
-	if err := args.CallDefaults(gasCap, header.BaseFee, b.ChainConfig().ChainID); err != nil {
+	if err = args.CallDefaults(gasCap, header.BaseFee, b.ChainConfig().ChainID); err != nil {
 		return 0, err
 	}
 	call := args.ToMessage(header.BaseFee)

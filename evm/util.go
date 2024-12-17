@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -32,7 +33,7 @@ func ConvertBigIntToUint256(b *big.Int) *uint256.Int {
 func ObjToJson(obj interface{}) string {
 	byt, err := json.Marshal(obj)
 	if err != nil {
-		fmt.Printf("Error marshalling obj to json: %v\n", err)
+		log.Printf("Error marshal obj to json: %v\n", err)
 		return ""
 	}
 	return string(byt)

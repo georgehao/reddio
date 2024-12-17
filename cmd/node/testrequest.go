@@ -24,7 +24,6 @@ import (
 // How To Use
 // Add this line in main.go (before `app.StartupChain()`)
 // go testSendTransaction(gethCfg, true)
-
 func testEthCall(exit bool) {
 	time.Sleep(5 * time.Second)
 	requestBody := `{
@@ -274,8 +273,9 @@ func sendRequest(dataString string) {
 		fmt.Println("Error sending request:", err)
 		return
 	}
-
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -284,5 +284,4 @@ func sendRequest(dataString string) {
 	}
 
 	log.Printf("Response [%v] : %v", resp.Status, string(body))
-	return
 }

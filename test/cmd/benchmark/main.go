@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	"golang.org/x/time/rate"
 
 	"github.com/reddio-com/reddio/evm"
@@ -39,9 +40,13 @@ func main() {
 	evmConfig := evm.LoadEvmConfig(evmConfigPath)
 	switch action {
 	case "prepare":
-		prepareBenchmark(evmConfig)
+		if err := prepareBenchmark(evmConfig); err != nil {
+			logrus.Errorf("prepare benchmark faild:%v", err)
+		}
 	case "run":
-		blockBenchmark(evmConfig, qps)
+		if err := blockBenchmark(evmConfig, qps); err != nil {
+			logrus.Errorf("block benchmark faild:%v", err)
+		}
 	}
 }
 
@@ -55,13 +60,15 @@ func prepareBenchmark(evmCfg *evm.GethConfig) error {
 	}
 	_, err = os.Stat("eth_benchmark_data.json")
 	if err == nil {
-		os.Remove("eth_benchmark_data.json")
+		_ = os.Remove("eth_benchmark_data.json")
 	}
 	file, err := os.Create("eth_benchmark_data.json")
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 	d, err := json.Marshal(wallets)
 	if err != nil {
 		return err
@@ -97,13 +104,16 @@ func blockBenchmark(evmCfg *evm.GethConfig, qps int) error {
 }
 
 func runBenchmark(manager *transfer.EthManager) {
-	after := time.After(duration)
+	timer := time.NewTimer(duration)
+	defer timer.Stop()
 	for {
 		select {
-		case <-after:
+		case <-timer.C:
 			return
 		default:
+			if err := manager.Run(context.Background()); err != nil {
+				logrus.Errorf("run benchmark faild:%v", err)
+			}
 		}
-		manager.Run(context.Background())
 	}
 }

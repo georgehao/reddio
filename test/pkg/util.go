@@ -28,12 +28,12 @@ func generatePrivateKey() (string, string) {
 	return hexutil.Encode(privateKeyBytes)[2:], address
 }
 
-func sendRequest(hostAddress string, dataString string) ([]byte, error) {
+func sendRequest(hostAddress string, dataString string) []byte {
 	resp, err := sendSingleRequest(hostAddress, dataString)
 	if err == nil {
-		return resp, nil
+		return resp
 	}
-	log.Println(fmt.Sprintf("send request got Err:%v", err))
+	log.Printf("send request got Err:%v", err)
 	for {
 		time.Sleep(10 * time.Millisecond)
 		resp, err = sendSingleRequest(hostAddress, dataString)
@@ -41,7 +41,7 @@ func sendRequest(hostAddress string, dataString string) ([]byte, error) {
 			break
 		}
 	}
-	return resp, nil
+	return resp
 }
 
 func sendSingleRequest(hostAddress string, dataString string) ([]byte, error) {
@@ -55,7 +55,9 @@ func sendSingleRequest(hostAddress string, dataString string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error sending request: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("error sending request: %v", err)

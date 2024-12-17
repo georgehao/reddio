@@ -129,20 +129,20 @@ func (cd *UniswapV2TPSStatisticsTestCase) prepareDeployerContract(deployerUser *
 	}
 	var lastTxHash common.Hash
 	for _, contract := range ERC20DeployedContracts {
-		_, err := contract.tokenInstance.Approve(depolyerAuth, uniswapV2Contract.uniswapV2Router01Address, big.NewInt(approveAmount))
+		_, err = contract.tokenInstance.Approve(depolyerAuth, uniswapV2Contract.uniswapV2Router01Address, big.NewInt(approveAmount))
 		if err != nil {
 			return [20]byte{}, nil, fmt.Errorf("failed to create approve transaction for user %s: %v", deployerUser.Address, err)
 		}
 
 		depolyerAuth.Nonce = depolyerAuth.Nonce.Add(depolyerAuth.Nonce, big.NewInt(1))
 		for _, user := range testUsers {
-			testAuth, err := generateTestAuth(client, user, chainID, gasPrice, gasLimit)
-			if err != nil {
-				return [20]byte{}, nil, fmt.Errorf("failed to generate test auth for user %s: %v", user.Address, err)
+			testAuth, authErr := generateTestAuth(client, user, chainID, gasPrice, gasLimit)
+			if authErr != nil {
+				return [20]byte{}, nil, fmt.Errorf("failed to generate test auth for user %s: %v", user.Address, authErr)
 			}
-			tx, err := contract.tokenInstance.Approve(testAuth, uniswapV2Contract.uniswapV2Router01Address, big.NewInt(approveAmount))
-			if err != nil {
-				return [20]byte{}, nil, fmt.Errorf("failed to create approve transaction for user %s: %v", user.Address, err)
+			tx, approveErr := contract.tokenInstance.Approve(testAuth, uniswapV2Contract.uniswapV2Router01Address, big.NewInt(approveAmount))
+			if approveErr != nil {
+				return [20]byte{}, nil, fmt.Errorf("failed to create approve transaction for user %s: %v", user.Address, approveErr)
 			}
 			lastTxHash = tx.Hash()
 			// log.Printf("Approve transaction hash for user %s: %s", user.Address, tx.Hash().Hex())
@@ -159,7 +159,7 @@ func (cd *UniswapV2TPSStatisticsTestCase) prepareDeployerContract(deployerUser *
 	tokenPairs := generateTokenPairs(ERC20DeployedContracts)
 	// add liquidity
 	for _, pair := range tokenPairs {
-		addLiquidityTx, err := uniswapV2Contract.uniswapV2RouterInstance.AddLiquidity(
+		addLiquidityTx, addLiquidityErr := uniswapV2Contract.uniswapV2RouterInstance.AddLiquidity(
 			depolyerAuth,
 			pair[0],
 			pair[1],
@@ -170,8 +170,8 @@ func (cd *UniswapV2TPSStatisticsTestCase) prepareDeployerContract(deployerUser *
 			common.HexToAddress(deployerUser.Address),
 			big.NewInt(time.Now().Unix()+1000),
 		)
-		if err != nil {
-			return [20]byte{}, nil, fmt.Errorf("failed to create add liquidity transaction for pair %s - %s: %v", pair[0].Hex(), pair[1].Hex(), err)
+		if addLiquidityErr != nil {
+			return [20]byte{}, nil, fmt.Errorf("failed to create add liquidity transaction for pair %s - %s: %v", pair[0].Hex(), pair[1].Hex(), addLiquidityErr)
 		}
 		depolyerAuth.Nonce = depolyerAuth.Nonce.Add(depolyerAuth.Nonce, big.NewInt(1))
 		lastTxHash = addLiquidityTx.Hash()
@@ -211,8 +211,10 @@ func (cd *UniswapV2TPSStatisticsTestCase) Prepare(ctx context.Context, m *pkg.Wa
 		TestContracts: make([]TestContract, 0),
 	}
 	for index, deployerUser := range deployerUsers {
-		log.Println(fmt.Sprintf("start to deploy %v contract", index))
-		router, tokenPairs, err := cd.prepareDeployerContract(deployerUser, testUsers, gasPrice, client)
+		log.Printf("start to deploy %v contract", index)
+		var router common.Address
+		var tokenPairs [][2]common.Address
+		router, tokenPairs, err = cd.prepareDeployerContract(deployerUser, testUsers, gasPrice, client)
 		if err != nil {
 			return fmt.Errorf("prepare contract failed, err:%v", err)
 		}
@@ -297,7 +299,7 @@ func (cd *UniswapV2TPSStatisticsTestCase) executeSwapSteps(client *ethclient.Cli
 	for _, step := range steps {
 		if err := cd.rm.Wait(context.Background()); err == nil {
 			if err := executeSwapStep(client, step, chainID, gasPrice, gasLimit); err != nil {
-				log.Println(fmt.Sprintf("execute swap step err:%v", err.Error()))
+				log.Printf("execute swap step err:%v", err.Error())
 			}
 		}
 	}

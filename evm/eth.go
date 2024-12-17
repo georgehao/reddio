@@ -172,7 +172,7 @@ func (s *Solidity) StartBlock(block *yu_types.Block) {
 	// s.gasPool = new(core.GasPool).AddGas(block.LeiLimit)
 	s.cfg.GasLimit = block.LeiLimit
 	s.cfg.Time = block.Timestamp
-	s.cfg.Difficulty = big.NewInt(int64(block.Difficulty))
+	s.cfg.Difficulty = new(big.Int).SetUint64(block.Difficulty)
 }
 
 func (s *Solidity) EndBlock(block *yu_types.Block) {

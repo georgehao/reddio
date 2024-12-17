@@ -59,16 +59,13 @@ func blockBenchmark(ethManager *uniswap.EthManager) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go runBenchmark(ctx, ethManager)
-	for {
-		select {
-		case <-after:
-			return
-		}
+	for range after {
+		return
 	}
 }
 
 func prepareBenchmark(ctx context.Context, manager *uniswap.EthManager) {
-	manager.Prepare(ctx)
+	_ = manager.Prepare(ctx)
 }
 
 func runBenchmark(ctx context.Context, manager *uniswap.EthManager) {
@@ -78,6 +75,6 @@ func runBenchmark(ctx context.Context, manager *uniswap.EthManager) {
 			return
 		default:
 		}
-		manager.Run(ctx)
+		_ = manager.Run(ctx)
 	}
 }

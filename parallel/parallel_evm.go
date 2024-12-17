@@ -7,12 +7,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/yu-org/yu/core/tripod"
-
 	"github.com/ethereum/go-ethereum/core/state"
-
 	"github.com/yu-org/yu/common"
 	"github.com/yu-org/yu/core/context"
+	"github.com/yu-org/yu/core/tripod"
 	"github.com/yu-org/yu/core/tripod/dev"
 	"github.com/yu-org/yu/core/types"
 
@@ -87,7 +85,7 @@ func (k *ParallelEVM) prepareTxnList(block *types.Block, statManager *BlockTxnSt
 	}()
 	stxns := block.Txns
 	receipts := make(map[common.Hash]*types.Receipt)
-	txnCtxList := make([]*txnCtx, len(stxns), len(stxns))
+	txnCtxList := make([]*txnCtx, len(stxns))
 	for index, stxn := range stxns {
 		wrCall := stxn.Raw.WrCall
 		ctx, err := context.NewWriteContext(stxn, block, index)

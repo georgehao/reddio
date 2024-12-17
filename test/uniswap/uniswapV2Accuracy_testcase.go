@@ -10,6 +10,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 
@@ -25,8 +26,8 @@ type UniswapV2AccuracyTestCase struct {
 	deployedUsers int
 }
 
-func (cd *UniswapV2AccuracyTestCase) Name() string {
-	return cd.CaseName
+func (ca *UniswapV2AccuracyTestCase) Name() string {
+	return ca.CaseName
 }
 
 func NewUniswapV2AccuracyTestCase(name string, count int, initial uint64) *UniswapV2AccuracyTestCase {
@@ -82,10 +83,6 @@ func (ca *UniswapV2AccuracyTestCase) Run(ctx context.Context, m *pkg.WalletManag
 	// Perform  swaps
 	const maxRetries = 300
 	const retryDelay = 10 * time.Millisecond
-	var retryErrors []struct {
-		Nonce int
-		Err   error
-	}
 	// Act
 	routeraddress := preparedTestData.TestContracts[0].UniswapV2Router
 	uniswapV2RouterInstance, err := contracts.NewUniswapV2Router01(routeraddress, client)
@@ -98,20 +95,16 @@ func (ca *UniswapV2AccuracyTestCase) Run(ctx context.Context, m *pkg.WalletManag
 	}
 	for i := 0; i < swapTimes; i++ {
 		// Execute swap operation
-		nonce, err := client.PendingNonceAt(context.Background(), common.HexToAddress(testUser[0].Address))
-		if err != nil {
-			log.Fatalf("Failed to get nonce: %v", err)
-		}
-
 		for j := 0; j < maxRetries; j++ {
 			//(testUserAuth, amountOut, []common.Address{preparedTestData.TestContracts[0].TokenPairs[0][0], preparedTestData.TestContracts[0].TokenPairs[0][1]}, common.HexToAddress(testUser[0].Address), big.NewInt(time.Now().Unix()+1000))
-			swapETHForExactTokensTx, err := uniswapV2RouterInstance.SwapExactTokensForTokens(testUserAuth, big.NewInt(100), big.NewInt(0), swapPath, common.HexToAddress(testUser[0].Address), big.NewInt(time.Now().Unix()+1000))
+			var swapETHForExactTokensTx *types.Transaction
+			swapETHForExactTokensTx, err = uniswapV2RouterInstance.SwapExactTokensForTokens(testUserAuth, big.NewInt(100), big.NewInt(0), swapPath, common.HexToAddress(testUser[0].Address), big.NewInt(time.Now().Unix()+1000))
 			if err == nil {
 				// Wait for transaction confirmation
 				if i == (swapTimes - 1) {
-					isConfirmed, err := waitForConfirmation(client, swapETHForExactTokensTx.Hash())
-					if err != nil {
-						log.Fatalf("Failed to confirm swapETHForExactTokensTx transaction: %v", err)
+					isConfirmed, waitErr := waitForConfirmation(client, swapETHForExactTokensTx.Hash())
+					if waitErr != nil {
+						log.Fatalf("Failed to confirm swapETHForExactTokensTx transaction: %v", waitErr)
 					}
 					if !isConfirmed {
 						log.Fatalf("SwapETHForExactTokens transaction was not confirmed")
@@ -119,10 +112,6 @@ func (ca *UniswapV2AccuracyTestCase) Run(ctx context.Context, m *pkg.WalletManag
 				}
 				break
 			}
-			retryErrors = append(retryErrors, struct {
-				Nonce int
-				Err   error
-			}{Nonce: int(nonce), Err: err}) // record和 nonce
 			time.Sleep(retryDelay)
 		}
 
@@ -180,8 +169,8 @@ func (ca *UniswapV2AccuracyTestCase) Run(ctx context.Context, m *pkg.WalletManag
 	}
 
 	// Print final reserves
-	fmt.Printf("Final token1Reserve: %s\n", token1Reserve.String())
-	fmt.Printf("Final token2Reserve: %s\n", token2Reserve.String())
+	log.Printf("Final token1Reserve: %s\n", token1Reserve.String())
+	log.Printf("Final token2Reserve: %s\n", token2Reserve.String())
 
 	if token1Balance.Cmp(expectedToken1Balance) != 0 {
 		log.Fatalf("Expected user TokenA balance to be %s, but got %s", expectedToken1Balance.String(), token1Balance.String())
@@ -233,20 +222,20 @@ func (ca *UniswapV2AccuracyTestCase) prepareDeployerContract(deployerUser *pkg.E
 	}
 	var lastTxHash common.Hash
 	for _, contract := range ERC20DeployedContracts {
-		_, err := contract.tokenInstance.Approve(depolyerAuth, uniswapV2Contract.uniswapV2Router01Address, big.NewInt(approveAmount))
+		_, err = contract.tokenInstance.Approve(depolyerAuth, uniswapV2Contract.uniswapV2Router01Address, big.NewInt(approveAmount))
 		if err != nil {
 			return [20]byte{}, nil, fmt.Errorf("failed to create approve transaction for user %s: %v", deployerUser.Address, err)
 		}
 
 		depolyerAuth.Nonce = depolyerAuth.Nonce.Add(depolyerAuth.Nonce, big.NewInt(1))
 		for _, user := range testUsers {
-			testAuth, err := generateTestAuth(client, user, chainID, gasPrice, gasLimit)
-			if err != nil {
-				return [20]byte{}, nil, fmt.Errorf("failed to generate test auth for user %s: %v", user.Address, err)
+			testAuth, authErr := generateTestAuth(client, user, chainID, gasPrice, gasLimit)
+			if authErr != nil {
+				return [20]byte{}, nil, fmt.Errorf("failed to generate test auth for user %s: %v", user.Address, authErr)
 			}
-			tx, err := contract.tokenInstance.Approve(testAuth, uniswapV2Contract.uniswapV2Router01Address, big.NewInt(approveAmount))
-			if err != nil {
-				return [20]byte{}, nil, fmt.Errorf("failed to create approve transaction for user %s: %v", user.Address, err)
+			tx, approveErr := contract.tokenInstance.Approve(testAuth, uniswapV2Contract.uniswapV2Router01Address, big.NewInt(approveAmount))
+			if approveErr != nil {
+				return [20]byte{}, nil, fmt.Errorf("failed to create approve transaction for user %s: %v", user.Address, approveErr)
 			}
 			lastTxHash = tx.Hash()
 			// log.Printf("Approve transaction hash for user %s: %s", user.Address, tx.Hash().Hex())
@@ -263,7 +252,8 @@ func (ca *UniswapV2AccuracyTestCase) prepareDeployerContract(deployerUser *pkg.E
 	tokenPairs := generateTokenPairs(ERC20DeployedContracts)
 	// add liquidity
 	for _, pair := range tokenPairs {
-		addLiquidityTx, err := uniswapV2Contract.uniswapV2RouterInstance.AddLiquidity(
+		var addLiquidityTx *types.Transaction
+		addLiquidityTx, err = uniswapV2Contract.uniswapV2RouterInstance.AddLiquidity(
 			depolyerAuth,
 			pair[0],
 			pair[1],

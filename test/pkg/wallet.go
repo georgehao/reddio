@@ -120,10 +120,7 @@ func (m *WalletManager) QueryEth(wallet *EthWallet) (uint64, error) {
 		"method": "eth_getBalance",
 		"params": ["%s","latest"] 
 	}`, wallet.Address)
-	d, err := sendRequest(m.hostAddress, requestBody)
-	if err != nil {
-		return 0, err
-	}
+	d := sendRequest(m.hostAddress, requestBody)
 	resp := &queryResponse{}
 	if err := json.Unmarshal(d, resp); err != nil {
 		return 0, nil
@@ -196,7 +193,7 @@ func (m *WalletManager) sendRawTx(privateKeyHex string, toAddress string, amount
 		"method": "eth_sendRawTransaction",
 		"params": ["0x%x"] 
 	}`, rawTxBytes)
-	_, err = sendRequest(m.hostAddress, requestBody)
+	sendRequest(m.hostAddress, requestBody)
 	return err
 }
 
@@ -205,7 +202,6 @@ type RawTxReq struct {
 	toAddress     string
 	amount        uint64
 	data          []byte
-	nonce         uint64
 }
 
 func (m *WalletManager) sendBatchRawTxs(rawTxs []*RawTxReq) error {
@@ -258,6 +254,6 @@ func (m *WalletManager) sendBatchRawTxs(rawTxs []*RawTxReq) error {
 		"method": "eth_sendBatchRawTransactions",
 		"params": ["0x%x"] 
 	}`, batchTxBytes)
-	_, err = sendRequest(m.hostAddress, requestBody)
+	sendRequest(m.hostAddress, requestBody)
 	return err
 }

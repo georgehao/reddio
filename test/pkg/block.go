@@ -24,10 +24,14 @@ type BlockManager struct {
 }
 
 func (bm *BlockManager) StopBlockChain() {
-	_, err := http.Get(fmt.Sprintf("http://%s/api/admin/stop", bm.hostUrl))
+	resp, err := http.Get(fmt.Sprintf("http://%s/api/admin/stop", bm.hostUrl))
 	if err != nil {
 		log.Warn(err.Error())
+		return
 	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 }
 
 func (bm *BlockManager) GetBlockTxnCountByIndex(index int) (bool, int, error) {
@@ -35,7 +39,10 @@ func (bm *BlockManager) GetBlockTxnCountByIndex(index int) (bool, int, error) {
 	if err != nil {
 		return false, 0, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+
 	d, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return false, 0, err
@@ -56,7 +63,10 @@ func (bm *BlockManager) GetCurrentBlock() (*types.Block, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+
 	d, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
@@ -77,7 +87,9 @@ func (bm *BlockManager) GetBlockByIndex(id uint64) (*types.Block, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	d, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err

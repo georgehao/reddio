@@ -345,7 +345,7 @@ func (args *TransactionArgs) setLondonFeeDefaults(ctx context.Context, head *typ
 }
 
 // setBlobTxSidecar adds the blob tx
-func (args *TransactionArgs) setBlobTxSidecar(ctx context.Context) error {
+func (args *TransactionArgs) setBlobTxSidecar() error {
 	// No blobs, we're done.
 	if args.Blobs == nil {
 		return nil
